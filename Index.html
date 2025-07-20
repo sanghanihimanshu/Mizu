@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ludhiana Bicycle Parts Manufacturers Directory</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: The application is designed as an interactive directory dashboard. This structure was chosen for maximum usability, directly addressing the user's need to find and filter manufacturer information, which is a significant improvement over a static Excel sheet. The layout consists of three main parts: 1) A top control panel with category filters and a search bar for immediate interaction. 2) A visual analytics section with a bar chart to provide a quick overview of the manufacturing landscape by specialty. 3) A responsive grid of manufacturer 'cards' that displays detailed information. The user flow is simple: view all, filter by category or search by name to dynamically update the visible cards. This task-oriented design makes finding specific information efficient and intuitive. -->
+    <!-- Visualization & Content Choices: 
+        1. Manufacturer Directory: Report Info -> List of all manufacturers and their details. Goal -> Organize, Inform, Allow search. Viz/Presentation -> A responsive grid of cards created with HTML/Tailwind. Interaction -> Users can filter the cards by clicking category buttons or using a search bar. This is powered by vanilla JavaScript that toggles the visibility of the cards. Justification -> This is a highly scannable and user-friendly pattern for presenting directory information, far superior to a static table. Library/Method -> Vanilla JS, HTML, Tailwind CSS.
+        2. Manufacturer Specialization Distribution: Report Info -> The number of manufacturers for each part category. Goal -> Compare. Viz/Presentation -> A vertical bar chart. Interaction -> Hovering over the bars reveals tooltips with the exact count for that category. Justification -> A bar chart is the most effective visualization for comparing counts across distinct categories, providing an immediate understanding of market concentration. Library/Method -> Chart.js on a Canvas element.
+        3. AI-Powered Email Draft: Report Info -> Manufacturer name, category, contact. Goal -> Facilitate quick communication. Viz/Presentation -> Modal with a text area for the generated email. Interaction -> Click a button on a manufacturer card to open the modal, LLM generates text, user can copy. Justification -> Streamlines the inquiry process, making the directory more actionable. Library/Method -> Gemini API (gemini-2.0-flash), Vanilla JS, HTML, Tailwind CSS.
+        4. AI-Powered Product Pitch: Report Info -> Manufacturer name, category. Goal -> Generate marketing content. Viz/Presentation -> Modal with a text area for the generated pitch. Interaction -> Click a button on a manufacturer card to open the modal, LLM generates text, user can copy. Justification -> Provides quick, AI-generated marketing copy, adding value for users looking to understand or promote products. Library/Method -> Gemini API (gemini-2.0-flash), Vanilla JS, HTML, Tailwind CSS.
+        5. Direct Call Feature: Report Info -> Manufacturer phone number. Goal -> Enable direct contact. Viz/Presentation -> Button with a phone icon/text. Interaction -> Click the button to initiate a phone call. Justification -> Directly connects users to manufacturers, improving efficiency. Library/Method -> HTML `tel:` link, Tailwind CSS.
+        This design adheres to all constraints, using interactive HTML/JS for the directory and Chart.js for the visualization. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 40vh;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .active-filter {
+            background-color: #1e40af;
+            color: white;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-blue-900 mb-2">Ludhiana Bicycle Parts Manufacturers</h1>
+            <p class="text-base text-gray-600 max-w-3xl mx-auto">An interactive directory of leading bicycle component manufacturers in Ludhiana. Use the filters and search bar below to explore suppliers by their specialty and find the contacts you need.</p>
+        </header>
+
+        <main>
+            <section id="controls" class="mb-8 p-6 bg-white rounded-xl shadow-md">
+                <div class="flex flex-col md:flex-row gap-4 items-center">
+                    <div class="w-full md:w-auto">
+                        <label for="search" class="sr-only">Search by Company Name</label>
+                        <input type="text" id="search" placeholder="Search by company name..." class="w-full md:w-64 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                    </div>
+                    <div class="flex flex-wrap gap-2 justify-center" id="filter-buttons">
+                        <button class="filter-btn active-filter px-4 py-2 bg-blue-800 text-white rounded-lg hover:bg-blue-700 transition" data-category="All">All Categories</button>
+                        <button class="filter-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition" data-category="E-Frame">E-Frames</button>
+                        <button class="filter-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition" data-category="Fat Rim">Fat Rims</button>
+                        <button class="filter-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition" data-category="Alloy Rim">Alloy Rims</button>
+                        <button class="filter-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition" data-category="Chain Wheel">Chain Wheels</button>
+                        <button class="filter-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition" data-category="Spares">General Spares</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="analytics" class="mb-8 p-6 bg-white rounded-xl shadow-md">
+                <h2 class="text-2xl font-bold text-center text-blue-900 mb-4">Manufacturer Specialization Overview</h2>
+                <p class="text-center text-gray-600 mb-6 max-w-2xl mx-auto">This chart illustrates the number of listed manufacturers specializing in each major component category. This provides a quick visual guide to the supply landscape in Ludhiana.</p>
+                <div class="chart-container">
+                    <canvas id="manufacturersChart"></canvas>
+                </div>
+            </section>
+
+            <section id="directory">
+                <h2 class="text-2xl font-bold text-center text-blue-900 mb-4">Manufacturer Directory</h2>
+                 <p class="text-center text-gray-600 mb-6 max-w-2xl mx-auto">Below is the detailed list of manufacturers. Use the controls at the top of the page to filter the results. Each card contains contact and company information.</p>
+                <div id="manufacturer-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                </div>
+            </section>
+        </main>
+
+        <footer class="text-center mt-12 py-4 border-t border-gray-200">
+            <p class="text-sm text-gray-500">Interactive Directory. Data is illustrative. Last updated: July 2025.</p>
+        </footer>
+    </div>
+
+    <!-- Email Draft Modal -->
+    <div id="emailModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 class="text-2xl font-bold text-blue-900 mb-4">✨ Draft Inquiry Email</h3>
+            <p class="text-gray-700 mb-4">Here's a draft email based on the manufacturer's details. You can copy and edit it before sending.</p>
+            <textarea id="emailDraftTextarea" class="w-full h-48 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500" readonly></textarea>
+            <div class="flex justify-end mt-4 gap-2">
+                <button id="copyEmailBtn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Copy Email</button>
+                <button id="closeModalBtn" class="px-6 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition">Close</button>
+            </div>
+            <div id="emailLoading" class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg" style="display: none;">
+                <div class="flex flex-col items-center">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                    <p class="mt-3 text-blue-700">Generating email...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Pitch Modal -->
+    <div id="pitchModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 class="text-2xl font-bold text-blue-900 mb-4">✨ Product Pitch</h3>
+            <p class="text-gray-700 mb-4">Here's a marketing pitch generated for this manufacturer's product category.</p>
+            <textarea id="pitchTextarea" class="w-full h-48 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500" readonly></textarea>
+            <div class="flex justify-end mt-4 gap-2">
+                <button id="copyPitchBtn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Copy Pitch</button>
+                <button id="closePitchModalBtn" class="px-6 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition">Close</button>
+            </div>
+            <div id="pitchLoading" class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg" style="display: none;">
+                <div class="flex flex-col items-center">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                    <p class="mt-3 text-blue-700">Generating pitch...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const manufacturers = [
+                { name: "Punjab Cycle Frames", category: "E-Frame", contact: "Mr. Ramesh Kumar", phone: "+91-9876543210", address: "Focal Point, Phase IV, Ludhiana", established: 1995, employees: 120, rating: 4.5 },
+                { name: "Ludhiana E-Bike Co.", category: "E-Frame", contact: "Ms. Sunita Sharma", phone: "+91-9812345678", address: "Industrial Area A, Ludhiana", established: 2010, employees: 85, rating: 4.8 },
+                { name: "Himalayan Rims & Tyres", category: "Fat Rim", contact: "Mr. Balwinder Singh", phone: "+91-9988776655", address: "Gill Road, Ludhiana", established: 2005, employees: 70, rating: 4.2 },
+                { name: "Super Fat Wheels", category: "Fat Rim", contact: "Mr. Jaspreet Singh", phone: "+91-9876512345", address: "Dhandari Kalan, Ludhiana", established: 2012, employees: 55, rating: 4.0 },
+                { name: "Precision Alloy Works", category: "Alloy Rim", contact: "Mr. Anil Gupta", phone: "+91-9811122233", address: "Focal Point, Phase V, Ludhiana", established: 1998, employees: 200, rating: 4.9 },
+                { name: "Modern Rims Pvt. Ltd.", category: "Alloy Rim", contact: "Ms. Priya Mehta", phone: "+91-9990001112", address: "Industrial Area B, Ludhiana", established: 2002, employees: 150, rating: 4.6 },
+                { name: "A-One Alloys", category: "Alloy Rim", contact: "Mr. Rajinder Verma", phone: "+91-9876509876", address: "Sunder Nagar, Ludhiana", established: 2008, employees: 90, rating: 4.3 },
+                { name: "Guru Nanak Chainwheels", category: "Chain Wheel", contact: "Mr. Sukhdev Singh", phone: "+91-9855566677", address: "Janta Nagar, Ludhiana", established: 1990, employees: 110, rating: 4.7 },
+                { name: "Bharat Crankshafts", category: "Chain Wheel", contact: "Mr. Om Prakash", phone: "+91-9823456789", address: "Miller Ganj, Ludhiana", established: 1985, employees: 180, rating: 4.4 },
+                { name: "Speedex Spares & Parts", category: "Spares", contact: "Mr. Harish Jain", phone: "+91-9912398765", address: "Field Ganj, Ludhiana", established: 1992, employees: 65, rating: 4.1 },
+                { name: "United Cycle Components", category: "Spares", contact: "Mr. Farid Khan", phone: "+91-9877788899", address: "Chaura Bazar, Ludhiana", established: 2000, employees: 40, rating: 3.9 },
+                { name: "Robust E-Frames Ltd.", category: "E-Frame", contact: "Mr. Vikram Batra", phone: "+91-9814500112", address: "Focal Point, Phase VII, Ludhiana", established: 2015, employees: 95, rating: 4.6 },
+                { name: "Everstrong Rims", category: "Alloy Rim", contact: "Ms. Geeta Desai", phone: "+91-9988123456", address: "Industrial Area C, Ludhiana", established: 2006, employees: 130, rating: 4.5 },
+                { name: "PowerDrive Chainwheels", category: "Chain Wheel", contact: "Mr. Arjun Reddy", phone: "+91-9876554321", address: "Shimlapuri, Ludhiana", established: 2001, employees: 140, rating: 4.8 },
+                { name: "All-Terrain Wheel Co.", category: "Fat Rim", contact: "Mr. Manjeet Gill", phone: "+91-9811981198", address: "Gill Road, Ludhiana", established: 2014, employees: 60, rating: 4.3 },
+                { name: "Chand Industries", category: "E-Frame", contact: "Mr. Singh", phone: "+91-9870000001", address: "Maan Industrial Estate, Ludhiana", established: 2007, employees: 75, rating: 3.5 },
+                { name: "Raj Impex", category: "E-Frame", contact: "Mr. Kumar", phone: "+91-9870000002", address: "Dhandari Kalan Village, Ludhiana", established: 1999, employees: 100, rating: 5.0 },
+                { name: "Taurus International", category: "E-Frame", contact: "Mr. Sharma", phone: "+91-9870000003", address: "Jawahar Nagar, Ludhiana", established: 2019, employees: 50, rating: 4.8 },
+                { name: "Asian Bike Pvt Ltd", category: "Alloy Rim", contact: "Mr. Verma", phone: "+91-9870000004", address: "Sua Road, Dhandari Kalan, Ludhiana", established: 2019, employees: 110, rating: 4.2 },
+                { name: "Ghaison International", category: "Chain Wheel", contact: "Mr. Gupta", phone: "+91-9870000005", address: "Focal Point, Ludhiana", established: 2011, employees: 130, rating: 4.0 },
+                { name: "Ambika Cycles", category: "Alloy Rim", contact: "Mr. Arora", phone: "+91-9870000006", address: "Focal Point Phase 4, Ludhiana", established: 1989, employees: 160, rating: 4.4 },
+                { name: "Frendz Export", category: "Alloy Rim", contact: "Mr. Khan", phone: "+91-9870000007", address: "Millerganj, Ludhiana", established: 2018, employees: 80, rating: 4.8 },
+                { name: "Komal Engineering Works", category: "E-Frame", contact: "Mr. Sidhu", phone: "+91-9870000008", address: "Janta Nagar, Ludhiana", established: 2014, employees: 60, rating: 4.3 },
+                { name: "Blue Bird Cycles", category: "E-Frame", contact: "Ms. Kaur", phone: "+91-9870000009", address: "Lohara Road, Ludhiana", established: 2013, employees: 90, rating: 4.5 },
+                { name: "K W Bicycle Industries", category: "Alloy Rim", contact: "Mr. Bajaj", phone: "+91-9870000010", address: "Focal Point Phase 5, Ludhiana", established: 1956, employees: 250, rating: 4.6 },
+                { name: "Deol Cycle Industries", category: "E-Frame", contact: "Mr. Singh", phone: "+91-9870000011", address: "Focal Point Phase 6, Ludhiana", established: 2013, employees: 70, rating: 3.6 },
+                { name: "Rohit Industrial Corporation", category: "E-Frame", contact: "Mr. Kumar", phone: "+91-9870000012", address: "Industrial Area C, Ludhiana", established: 1999, employees: 100, rating: 4.8 },
+                { name: "Radiant Components Pvt Ltd", category: "E-Frame", contact: "Mr. Sharma", phone: "+91-9870000013", address: "Dhandari Kalan, Ludhiana", established: 2018, employees: 85, rating: 4.4 },
+                { name: "Nova Bicycle Industries", category: "Chain Wheel", contact: "Mr. Gupta", phone: "+91-9870000014", address: "Dhandari Kalan, Ludhiana", established: 2000, employees: 120, rating: 3.2 },
+                { name: "KBM GLOBAL", category: "E-Frame", contact: "Mr. Singh", phone: "+91-9870000015", address: "Ludhiana", established: 2018, employees: 45, rating: 5.0 },
+                { name: "Rising INDIA", category: "Chain Wheel", contact: "Mr. Mohit", phone: "+91-9870000016", address: "Ludhiana", established: 2016, employees: 90, rating: 4.0 },
+                { name: "Thaman Brothers", category: "Alloy Rim", contact: "Mr. Manjeet Singh", phone: "+91-9870000017", address: "Ludhiana", established: 1945, employees: 180, rating: 4.6 },
+                { name: "Birdi Cycle Industries", category: "Chain Wheel", contact: "Mr. Gill", phone: "+91-9870000018", address: "Ludhiana", established: 1967, employees: 100, rating: 4.2 },
+                { name: "Kohinoor Cycle Pvt Ltd", category: "Chain Wheel", contact: "Mr. Arora", phone: "+91-9870000019", address: "Ludhiana", established: 2013, employees: 70, rating: 4.1 },
+                { name: "Gurdip Cycle Industries (Ashoka)", category: "Chain Wheel", contact: "Mr. Singh", phone: "+91-9870000020", address: "Ludhiana", established: 1963, employees: 150, rating: 4.0 },
+                { name: "Sun Shine Industries", category: "Chain Wheel", contact: "Mr. Jain", phone: "+91-9870000021", address: "Ludhiana", established: 1980, employees: 90, rating: 4.1 },
+                { name: "Sypern Bikes", category: "Alloy Rim", contact: "Mr. Saxena", phone: "+91-9870000022", address: "Ludhiana", established: 2014, employees: 60, rating: 5.0 },
+                { name: "Benlui India International", category: "Chain Wheel", contact: "Mr. Kumar", phone: "+91-9870000023", address: "Focal Point Phase 8, Ludhiana", established: 2010, employees: 110, rating: 4.4 },
+                { name: "Everready Cycle Co (Regd) Brand", category: "Chain Wheel", contact: 
